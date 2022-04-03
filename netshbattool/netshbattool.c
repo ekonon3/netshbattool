@@ -3,7 +3,7 @@
 #include <time.h>
 #include <string.h>
 
-
+// Testing
 // Function to make config file
 int makeconfig () {
 
