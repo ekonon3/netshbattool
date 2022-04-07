@@ -2,6 +2,7 @@
 #include <Windows.h>
 #include <time.h>
 #include <string.h>
+#include <stdbool.h>
 
 // Function to make config file
 int makeconfig () {
@@ -59,7 +60,7 @@ int main () {
     char thumbprint[100];
     char thumbprintf[100];
     
-    int custom = 0;
+    bool custom = false;
     char ipcustom[100];
     char ipcustomf[100];
     char hostcustom[100];
@@ -68,11 +69,11 @@ int main () {
     char appidcustomf[100];
     char includedel = 0;
 
-    int yes443 = 0;
-    int nopause = 0;
-    int frombackup = 0;
+    bool yes443 = false;
+    bool nopause = false;
+    bool frombackup = false;
     char backupfile[100];
-    int thumbfrombackup = 0;
+    bool thumbfrombackup = false;
 
     char response[50];
 
@@ -112,45 +113,45 @@ int main () {
         puts("\nReading netshbattool.ini\n------------------------");
         while (fgets (config, sizeof (config), fconfig) != NULL) {
             if(config[0] != '#') {
-                if (frombackup == 0 && (strncmp (config, "thumbprint=", 11) == 0) && flag[0] != 1) {
+                if (!frombackup && (strncmp (config, "thumbprint=", 11) == 0) && flag[0] != 1) {
                     sprintf(thumbprint, "%s", &config[11]);
                     //thumbprint[strlen(thumbprint)-1] = '\0';
                     flag[0] = 1;
                 }
-                if (frombackup == 0 && (strncmp (config, "custom=1", 8) == 0) && flag[1] != 1) {
-                    custom = 1;
+                if (!frombackup && (strncmp (config, "custom=1", 8) == 0) && flag[1] != 1) {
+                    custom = true;
                     flag[1] = 1;
                 }
-                if (custom == 1 && (strncmp(config, "ip=", 3) == 0) && flag[2] != 1) {
+                if (custom && (strncmp(config, "ip=", 3) == 0) && flag[2] != 1) {
                     sprintf(ipcustom, "%s", &config[3]);
                     ipcustom[strlen(ipcustom)-1] = '\0';
                     flag[2] = 1;
                 }
-                if (custom == 1 && (strncmp(config, "hostname=", 9) == 0) && flag[3] != 1) {
+                if (custom && (strncmp(config, "hostname=", 9) == 0) && flag[3] != 1) {
                     sprintf(hostcustom, "%s", &config[9]);
                     hostcustom[strlen(hostcustom)-1] = '\0';
                     flag[3] = 1;
                 }
-                if (custom == 1 && (strncmp(config, "appid=", 6) == 0) && flag[4] != 1) {
+                if (custom && (strncmp(config, "appid=", 6) == 0) && flag[4] != 1) {
                     sprintf(appidcustom, "%s", &config[6]);
                     appidcustom[strlen(appidcustom)-1] = '\0';
                     flag[4] = 1;
                 }
-                if (custom == 1 && (strncmp(config, "include_delete_sslcert_commands=1", 33) == 0) && flag[5] != 1) {
-                    includedel = 1;
+                if (custom && (strncmp(config, "include_delete_sslcert_commands=1", 33) == 0) && flag[5] != 1) {
+                    includedel = true;
                     flag[5] = 1;
                 }          
-                if (custom == 0 && (strncmp(config, "commands_from_backup_file=1", 27) == 0) && flag[6] != 1) {
-                    frombackup = 1;
+                if (!custom && (strncmp(config, "commands_from_backup_file=1", 27) == 0) && flag[6] != 1) {
+                    frombackup = true;
                     flag[6] = 1;
                 }
-                if (frombackup == 1 && (strncmp(config, "backup_filename=", 16) == 0) && flag[7] != 1) {
+                if (frombackup && (strncmp(config, "backup_filename=", 16) == 0) && flag[7] != 1) {
                     sprintf(backupfile, "%s", &config[16]);
                     backupfile[strlen(backupfile)-1] = '\0';
                     flag[7] = 1;
                 }
-                if (frombackup == 1 && (strncmp(config, "use_thumbprint_from_backup_file=1", 33) == 0) && flag[8] != 1) {
-                    thumbfrombackup = 1;
+                if (frombackup && (strncmp(config, "use_thumbprint_from_backup_file=1", 33) == 0) && flag[8] != 1) {
+                    thumbfrombackup = true;
                     flag[8] = 1;
                 }
                 if ((strncmp(config, "no_pauses_in_bat_file=1", 23) == 0) && flag[9] != 1) {
@@ -158,7 +159,7 @@ int main () {
                     flag[9] = 1;
                 }
                 if ((strncmp(config, "include_port_443=1", 18) == 0) && flag[10] != 1) {
-                    yes443 = 1;
+                    yes443 = true;
                     flag[10] = 1;
                 }
             }
@@ -166,7 +167,7 @@ int main () {
         fclose(fconfig);
     }
 
-    if (thumbfrombackup != 1) {
+    if (!thumbfrombackup) {
         if(flag[0] == 0 || strlen(thumbprint) < 2) {
             puts("Thumbprint not found");
             puts("ERROR: \"thumbprint=\" setting needs to be filled out in netshbattool.ini");
@@ -184,7 +185,7 @@ int main () {
         }
         thumbprintf[j] = '\0';
 
-        //Make sure thumbprint only has numbers and digits
+        //Make sure thumbprint only has letters and digits
         for(i=0;i < strlen(thumbprintf);i++) {
             if(i > 49) {
                 puts("Thumbprint too long");
@@ -208,7 +209,7 @@ int main () {
         }
         printf("Thumbprint from config: %s\n", thumbprintf);
 
-        if (custom == 1) {
+        if (custom) {
             //Remove spaces from ip and check for invalid characters
             for(i=0,j=0;i < strlen(ipcustom);i++) {
                 if(i == 0 && j == 0 && ipcustom[i] == ' ') {
@@ -312,7 +313,7 @@ int main () {
     }
 
 
-    if (frombackup == 1) {
+    if (frombackup) {
         puts("commands_from_backup_file setting is set to 1");
         if(strlen(backupfile) < 2) {
                 puts("ERROR: Check backup filename in netshbattool.ini");
@@ -344,17 +345,17 @@ int main () {
             }
         }
         printf("Backup filename set in netshbattool.ini - '%s'\n", backupfile);
-        if(thumbfrombackup == 1) {
+        if(thumbfrombackup) {
             puts("use_thumbprint_from_backup_file set to 1, thumbprint will be taken from backup file");
         }
     }
 
-    if (nopause == 1) {
+    if (nopause) {
         puts("no_pauses_in_bat_file setting set to 1");
     }
 
     printf("Default ports looked for are: %s, %s, %s, %s, %s", p[0], p[1], p[2], p[3], p[4]);
-    if (yes443 == 1) {
+    if (yes443) {
         printf(", %s\ninclude_port_443 setting set to 1\n", p[5]);
     }
 
@@ -390,21 +391,27 @@ int main () {
         exit(1);
     }
 
-    if (custom == 0) {
+    if (!custom) {
         // Reading backup file to parse bindings
         FILE *fp;
-        if (frombackup != 1) {
+        if (!frombackup) {
             fp = fopen(filename, "r");
         } else {
             fp = fopen(backupfile, "r");
         }
         
         if (fp == NULL) {
-            if (frombackup != 1) {
-                printf("ERROR: Unable to open %s to read settings\n", filename);
+            fclose(fpw);
+            if (!frombackup) {
+                printf("ERROR: Unable to open %s to read settings\nDeleting empty batch file\n", filename);
             } else {
-                printf("ERROR: Unable to open %s to read settings\n", backupfile);
+                printf("ERROR: Unable to open %s to read settings\nDeleting empty batch file\n", backupfile);
             }
+            if (remove(filenamew) == 0) {
+                printf("Deleted %s successfully\n\n", filenamew);
+                } else {
+                printf("ERROR: Unable to delete %s\n\n", filenamew);
+                }
             puts("Press ENTER to exit");
             getchar();
             exit(1);
@@ -433,7 +440,7 @@ int main () {
             if (strstr(buffer, "IP:port") != NULL) {
                 if ((strstr(buffer, p[0]) != NULL) || (strstr(buffer, p[1]) != NULL) ||
                     (strstr(buffer, p[2]) != NULL) || (strstr(buffer, p[3]) != NULL) ||
-                    (strstr(buffer, p[4]) != NULL) || (yes443 == 1 && strstr(buffer, p[5]) != NULL)) {
+                    (strstr(buffer, p[4]) != NULL) || (yes443 && strstr(buffer, p[5]) != NULL)) {
                         ret = strstr(buffer, ": ");
                         ret[strlen(ret)-1] = '\0';
                         memmove(ret, ret+2, strlen(ret));
@@ -445,7 +452,7 @@ int main () {
             if (strstr(buffer, "Hostname:port") != NULL) {
                 if ((strstr(buffer, p[0]) != NULL) || (strstr(buffer, p[1]) != NULL) ||
                     (strstr(buffer, p[2]) != NULL) || (strstr(buffer, p[3]) != NULL) ||
-                    (strstr(buffer, p[4]) != NULL) || (yes443 == 1 && strstr(buffer, p[5]) != NULL)) {
+                    (strstr(buffer, p[4]) != NULL) || (yes443 && strstr(buffer, p[5]) != NULL)) {
                         ret = strstr(buffer, ": ");
                         ret[strlen(ret)-1] = '\0';
                         memmove(ret, ret+2, strlen(ret));
@@ -454,7 +461,7 @@ int main () {
                         j = 1;
                     }
             }
-            if (thumbfrombackup == 1 && (i == 1 || j == 1) && strstr(buffer, "Certificate Hash") != NULL) {
+            if (thumbfrombackup && (i == 1 || j == 1) && strstr(buffer, "Certificate Hash") != NULL) {
                 ret = strstr(buffer, ": ");
                 ret[strlen(ret)-1] = '\0';
                 memmove(ret, ret+2, strlen(ret));
@@ -469,24 +476,24 @@ int main () {
                 printf("Application ID: %s\n\n", appid);
                 if (i == 1) {
                     fprintf(fpw, "netsh http delete sslcert ipport=%s\n", ipport);
-                    if(thumbfrombackup != 1) {
+                    if(!thumbfrombackup) {
                         fprintf(fpw, "netsh http add sslcert ipport=%s certhash=%s appid=%s\n\n", ipport, thumbprintf, appid);
                     } else {
                         fprintf(fpw, "netsh http add sslcert ipport=%s certhash=%s appid=%s\n\n", ipport, backupthumb, appid);
                     }
-                    if (nopause == 0) {
+                    if (!nopause) {
                         fputs("pause\n\n", fpw);
                     }
                     k++;
                 }
                 if (j == 1) {
                     fprintf(fpw, "netsh http delete sslcert hostnameport=%s\n", hostport);
-                    if (thumbfrombackup != 1) {
+                    if (!thumbfrombackup) {
                         fprintf(fpw, "netsh http add sslcert hostnameport=%s certhash=%s appid=%s certstorename=MY\n\n", hostport, thumbprintf, appid);
                     } else {
                         fprintf(fpw, "netsh http add sslcert hostnameport=%s certhash=%s appid=%s certstorename=MY\n\n", hostport, backupthumb, appid);
                     }
-                    if (nopause == 0) {
+                    if (!nopause) {
                         fputs("pause\n\n", fpw);
                     }
                     k++;
@@ -516,9 +523,9 @@ int main () {
     
     // Custom mode
 
-    if (custom == 1) {
+    if (custom) {
 
-        if (yes443 == 1) {
+        if (yes443) {
             k = 5;
         } else {
             k = 4;
@@ -532,22 +539,22 @@ int main () {
         
         fputs("@echo on\n\n", fpw);
         for(i=0;i <= k;i++) {
-            if (includedel == 1) {
+            if (includedel) {
                 fprintf(fpw, "netsh http delete sslcert ipport=%s:%s\n", ipcustomf, p[i]);
             }
             fprintf(fpw, "netsh http add sslcert ipport=%s:%s certhash=%s appid=%s\n\n", ipcustomf, p[i], thumbprintf, appidcustomf);
 
-            if (nopause == 0) {
+            if (!nopause) {
                 fputs("pause\n\n", fpw);
             }
 
-            if(!(yes443 == 1 && i == k)) {
-                if (includedel == 1) {
+            if(!(yes443 && i == k)) {
+                if (includedel) {
                     fprintf(fpw, "netsh http delete sslcert hostnameport=%s:%s\n", hostcustomf, p[i]);
                 }
                 fprintf(fpw, "netsh http add sslcert hostnameport=%s:%s certhash=%s appid=%s certstorename=MY\n\n", hostcustomf, p[i], thumbprintf, appidcustomf);
 
-                if (nopause == 0) {
+                if (!nopause) {
                     fputs("pause\n\n", fpw);
                 }
             }
