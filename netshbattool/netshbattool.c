@@ -79,7 +79,7 @@ int main () {
 
     int i, j, k;
     i = j = k = 0;
-    int flag[11] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+    bool flag[11] = { 0 };
 
     char endcheck[] = "echo End of commands\n\n:choice\nset /P c=Do you want to see current bindings? [Y/N]\n";
     char endcheck2[] = "if /I \"%c%\" EQU \"Y\" goto :yes\nif /I \"%c%\" EQU \"N\" goto :no\ngoto :choice\n\n";
