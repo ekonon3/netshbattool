@@ -2,6 +2,7 @@
 #include <Windows.h>
 #include <time.h>
 #include <string.h>
+#include <stdbool.h>
 
 // Function to make config file
 int makeconfig () {
@@ -59,20 +60,20 @@ int main () {
     char thumbprint[100];
     char thumbprintf[100];
     
-    int custom = 0;
+    bool custom = 0;
     char ipcustom[100];
     char ipcustomf[100];
     char hostcustom[100];
     char hostcustomf[100];
     char appidcustom[100];
     char appidcustomf[100];
-    char includedel = 0;
+    bool includedel = 0;
 
-    int yes443 = 0;
-    int nopause = 0;
-    int frombackup = 0;
+    bool yes443 = 0;
+    bool nopause = 0;
+    bool frombackup = 0;
     char backupfile[100];
-    int thumbfrombackup = 0;
+    bool thumbfrombackup = 0;
 
     char response[50];
 
@@ -184,7 +185,7 @@ int main () {
         }
         thumbprintf[j] = '\0';
 
-        //Make sure thumbprint only has numbers and digits
+        //Make sure thumbprint only has letters and digits
         for(i=0;i < strlen(thumbprintf);i++) {
             if(i > 49) {
                 puts("Thumbprint too long");
