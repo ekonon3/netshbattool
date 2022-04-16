@@ -155,7 +155,7 @@ int main () {
                     flag[8] = 1;
                 }
                 if ((strncmp(config, "no_pauses_in_bat_file=1", 23) == 0) && flag[9] != 1) {
-                    nopause = 1;
+                    nopause = true;
                     flag[9] = 1;
                 }
                 if ((strncmp(config, "include_port_443=1", 18) == 0) && flag[10] != 1) {
@@ -176,9 +176,9 @@ int main () {
             exit(1);
         }
 
-        //Remove spaces and newline from thumbprint
+        //Remove spaces, newline, and invalid characters from thumbprint
         for(i=0,j=0;thumbprint[i] != '\0';i++) {
-            if (thumbprint[i] != ' ' && thumbprint[i] != '\n') {
+            if (thumbprint[i] != ' ' && thumbprint[i] != '\n' && (isdigit(thumbprint[i]) || isalpha(thumbprint[i]))) {
                 thumbprintf[j] = thumbprint[i];
                 j++;
             }
