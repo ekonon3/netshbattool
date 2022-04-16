@@ -13,7 +13,7 @@ int makeconfig () {
     if(fpc == NULL) {
         return 1;
     } else {
-        fputs("# Enter new cert thumbprint (can leave spaces if it has them)\n\nthumbprint=\n\n\n\n", fpc);
+        fputs("# Enter new cert thumbprint (can leave spaces if it has them; can leave unicode characters)\n\nthumbprint=\n\n\n\n", fpc);
         fputs("# By default, will look for existing bindings on default ports, and create a\n", fpc);
         fputs("# .bat file with commands only for those bound ports. Commands are to delete\n# old bindings, and add new ones with ", fpc);
         fputs("same ip/host/port/appid but new thumbprint.\n# Will also create a backup file of current bindings.\n", fpc);
