@@ -67,7 +67,7 @@ int main () {
     char hostcustomf[100];
     char appidcustom[100];
     char appidcustomf[100];
-    char includedel = 0;
+    bool includedel = false;
 
     bool yes443 = false;
     bool nopause = false;
