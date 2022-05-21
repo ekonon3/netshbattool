@@ -4,6 +4,10 @@
 #include <string.h>
 #include <stdbool.h>
 
+#define BUF_L 200
+#define BUF_M 100
+#define BUF_S 50
+
 // Function to make config file
 int makeconfig () {
 
@@ -29,21 +33,74 @@ int makeconfig () {
         fputs("# If \"use_thumbprint_from_backup_file\" is 1, thumbprint from backup file will be used\n# for commands instead of thumbprint setting at the top.\n", fpc);
         fputs("\ncommands_from_backup_file=0\nbackup_filename=example.txt\nuse_thumbprint_from_backup_file=0\n\n\n", fpc);
         fputs("# Set \"custom\" to 1 to make .bat file with commands for all default ports on a\n", fpc);
-        fputs("# chosen IP/hostname and appid using thumbprint configured above.\n", fpc);
-        fputs("# If \"delete sslcert\" commands are needed, set include_delete_sslcert_commands to 1\n", fpc);
+        fputs("# chosen IP/hostname and appid using thumbprint configured above.\n# Can set hostname to be retrieved automatically (hostname_manual setting would be ignored), or \n", fpc);
+        fputs("# set the to 0 to use manually-entered hostname.\n# If \"delete sslcert\" commands are needed, set include_delete_sslcert_commands to 1\n", fpc);
         fputs("# Note: custom mode won't make commands for port 443 for \"hostnameport\", so far have only seen \"ipport\" bindings for IIS\n\n", fpc);
-        fputs("custom=0\nip=0.0.0.0\nhostname=example.com\nappid={00112233-4455-6677-8899-AABBCCDDEEFF}\ninclude_delete_sslcert_commands=0\n\n", fpc);
+        fputs("custom=0\nget_hostname_automatically=1\nip=0.0.0.0\nhostname_manual=example.com\nappid={00112233-4455-6677-8899-AABBCCDDEEFF}\ninclude_delete_sslcert_commands=0\n\n", fpc);
         fclose(fpc);
         
         return 0;
     }
 }
 
+// Function to get FQDN
+char* getfqdn() {
+    char *fqdn = malloc(sizeof(char) * BUF_L);
+    char result[BUF_L];
+    char expectedresult[] = "Full Computer name                   ";
+    bool success = false;
+    FILE *fphost;
+    fphost = popen("net config workstation | findstr \"Full\"", "r");
+        if (fphost == NULL) {
+            puts("Issue with getting hostname automatically, exiting");
+            getchar();
+            exit(1);
+        } else {
+            while (fgets(result, sizeof(result), fphost) != NULL) {
+                if (strncmp(expectedresult, result, 38) != 0) {
+                    snprintf(fqdn, BUF_L, "%s", result+37);
+                    success = true;
+                }
+            }
+        }
+    pclose(fphost);
+    
+    if (!success) {
+        puts("Issue with getting hostname automatically, exiting");
+        getchar();
+        exit(1);
+    }
+    
+    return fqdn;
+            
+}
+
+// Function for some notifications
+void notifymsg(int msg)
+{
+    switch (msg) {
+        case 0:
+            puts("---WARNING: Thumbprint is not 40 characters long, might not be correct---\n");
+            break;
+        case 1:
+            puts("---INI FILE SET TO USE \"COMMANDS FROM BACKUP FILE\" MODE---\n");
+            break;
+        case 2:
+            puts("---INI FILE SET TO USE \"CUSTOM\" MODE---\n");
+            break;
+        default:
+            break;
+    }
+
+}
+
+
+// Main function
 int main () {
 
     puts("========================================================");
     puts("Batch file creation tool for netsh http sslcert commands");
-    puts("April 2022");
+    puts("May 2022");
     puts("========================================================");
 
     // Ports
@@ -56,30 +113,33 @@ int main () {
     p[5] = "443";
 
     // Read config, set variables
-    char config[100];
-    char thumbprint[100];
-    char thumbprintf[100];
+    char config[BUF_M];
+    char thumbprint[BUF_M];
+    char thumbprintf[BUF_M];
     
     bool custom = false;
-    char ipcustom[100];
-    char ipcustomf[100];
-    char hostcustom[100];
-    char hostcustomf[100];
-    char appidcustom[100];
-    char appidcustomf[100];
+    char ipcustom[BUF_M];
+    char ipcustomf[BUF_M];
+    char hostcustom[BUF_M];
+    char hostcustomf[BUF_M];
+    char appidcustom[BUF_M];
+    char appidcustomf[BUF_M];
     bool includedel = false;
+    bool gethost = false;
 
     bool yes443 = false;
     bool nopause = false;
     bool frombackup = false;
-    char backupfile[100];
+    char backupfile[BUF_M];
     bool thumbfrombackup = false;
 
-    char response[50];
+    char response[BUF_S];
 
     int i, j, k;
     i = j = k = 0;
-    bool flag[11] = { 0 };
+    bool flag[12] = { 0 };
+
+    bool thumbnot40 = false;
 
     char endcheck[] = "echo End of commands\n\n:choice\nset /P c=Do you want to see current bindings? [Y/N]\n";
     char endcheck2[] = "if /I \"%c%\" EQU \"Y\" goto :yes\nif /I \"%c%\" EQU \"N\" goto :no\ngoto :choice\n\n";
@@ -114,7 +174,7 @@ int main () {
         while (fgets (config, sizeof (config), fconfig) != NULL) {
             if(config[0] != '#') {
                 if (!frombackup && (strncmp (config, "thumbprint=", 11) == 0) && flag[0] != 1) {
-                    sprintf(thumbprint, "%s", &config[11]);
+                    snprintf(thumbprint, BUF_M, "%s", &config[11]);
                     //thumbprint[strlen(thumbprint)-1] = '\0';
                     flag[0] = 1;
                 }
@@ -123,17 +183,17 @@ int main () {
                     flag[1] = 1;
                 }
                 if (custom && (strncmp(config, "ip=", 3) == 0) && flag[2] != 1) {
-                    sprintf(ipcustom, "%s", &config[3]);
+                    snprintf(ipcustom, BUF_M, "%s", &config[3]);
                     ipcustom[strlen(ipcustom)-1] = '\0';
                     flag[2] = 1;
                 }
-                if (custom && (strncmp(config, "hostname=", 9) == 0) && flag[3] != 1) {
-                    sprintf(hostcustom, "%s", &config[9]);
+                if (custom && (strncmp(config, "hostname_manual=", 16) == 0) && flag[3] != 1) {
+                    snprintf(hostcustom, BUF_M, "%s", &config[16]);
                     hostcustom[strlen(hostcustom)-1] = '\0';
                     flag[3] = 1;
                 }
                 if (custom && (strncmp(config, "appid=", 6) == 0) && flag[4] != 1) {
-                    sprintf(appidcustom, "%s", &config[6]);
+                    snprintf(appidcustom, BUF_M, "%s", &config[6]);
                     appidcustom[strlen(appidcustom)-1] = '\0';
                     flag[4] = 1;
                 }
@@ -146,7 +206,7 @@ int main () {
                     flag[6] = 1;
                 }
                 if (frombackup && (strncmp(config, "backup_filename=", 16) == 0) && flag[7] != 1) {
-                    sprintf(backupfile, "%s", &config[16]);
+                    snprintf(backupfile, BUF_M, "%s", &config[16]);
                     backupfile[strlen(backupfile)-1] = '\0';
                     flag[7] = 1;
                 }
@@ -161,6 +221,10 @@ int main () {
                 if ((strncmp(config, "include_port_443=1", 18) == 0) && flag[10] != 1) {
                     yes443 = true;
                     flag[10] = 1;
+                }
+                if (custom && !frombackup && (strncmp(config, "get_hostname_automatically=1", 28) == 0) && flag[11] != 1) {
+                    gethost = true;
+                    flag[11] = 1;
                 }
             }
         }
@@ -203,9 +267,7 @@ int main () {
         }
 
         if(i != 40) {
-            puts("!");
-            puts("!WARNING: thumbprint is not 40 characters. Might not be correct");
-            puts("!");
+            thumbnot40 = true;
         }
         printf("Thumbprint from config: %s\n", thumbprintf);
 
@@ -225,6 +287,7 @@ int main () {
 
             for (i=0;i < strlen(ipcustomf);i++) {
                 if (!isdigit(ipcustomf[i]) && ipcustomf[i] != '.' && ipcustomf[i] != ' ') {
+                    notifymsg(2);
                     puts("ERROR: Invalid character in IP address");
                     printf("Character: %c\n", ipcustomf[i]);
                     puts("Press ENTER to exit");
@@ -235,6 +298,7 @@ int main () {
             }
             
             if (i > 16) {
+                notifymsg(2);
                 puts("Check IP address length");
                 puts("Press ENTER to exit");
                 getchar();
@@ -242,15 +306,27 @@ int main () {
             }
             
             //Remove spaces from hostname and check for invalid characters
-            for(i=0,j=0;i < strlen(hostcustom);i++) {
-                if(i == 0 && j == 0 && hostcustom[i] == ' ') {
-                    hostcustomf[j] = hostcustom[i];
-                    j++;
+            if(gethost)
+            {
+                char *fqdn = getfqdn();
+                for(i=0,j=0;i < strlen(fqdn);i++) {
+                    if (fqdn[i] != ' ' && fqdn[i] != '\n') {
+                        hostcustomf[j] = fqdn[i];
+                        j++;
+                        }
                 }
-                if (hostcustom[i] != ' ') {
-                    hostcustomf[j] = hostcustom[i];
-                    j++;
+                free(fqdn);
+            } else {
+                for(i=0,j=0;i < strlen(hostcustom);i++) {
+                    if(i == 0 && j == 0 && hostcustom[i] == ' ') {
+                        hostcustomf[j] = hostcustom[i];
+                        j++;
                     }
+                    if (hostcustom[i] != ' ') {
+                        hostcustomf[j] = hostcustom[i];
+                        j++;
+                        }
+                }
             }
 
             hostcustomf[j] = '\0';
@@ -259,6 +335,7 @@ int main () {
                 if (!isdigit(hostcustomf[i]) && !isalpha(hostcustomf[i])
                 && hostcustomf[i] != '.' && hostcustomf[i] != '-' &&
                 (i > 0 && hostcustomf[i] != ' ')){
+                    notifymsg(2);
                     puts("ERROR: Invalid character in hostname");
                     printf("Character: %c\n", hostcustomf[i]);
                     puts("Press ENTER to exit");
@@ -291,6 +368,7 @@ int main () {
                 if (!isdigit(appidcustomf[i]) && !isalpha(appidcustomf[i])
                 && appidcustomf[i] != '-' && appidcustomf[i] != '{'
                 && appidcustomf[i] != '}' && appidcustomf[i] != ' ') {
+                    notifymsg(2);
                     puts("ERROR: Invalid character in appid");
                     printf("Character: %c\n", appidcustomf[i]);
                     puts("Press ENTER to exit");
@@ -300,6 +378,7 @@ int main () {
             }
 
             if (i > 40) {
+                notifymsg(2);
                 puts("Check appid length");
                 puts("Press ENTER to exit");
                 getchar();
@@ -307,7 +386,7 @@ int main () {
             }
 
             puts("custom setting is set to 1\n\nSettings taken from netshbattool.ini:");
-            printf("IP address: %s\nHostname: %s\nAppID: %s\n", ipcustomf, hostcustomf, appidcustomf);
+            printf("get_hostname_automatically is set to %i\nIP address: %s\nHostname: %s\nAppID: %s\n", gethost, ipcustomf, hostcustomf, appidcustomf);
             printf("include_delete_sslcert_commands is set to %i\n\n", includedel);
         }
     }
@@ -316,6 +395,7 @@ int main () {
     if (frombackup) {
         puts("commands_from_backup_file setting is set to 1");
         if(strlen(backupfile) < 2) {
+                notifymsg(1);
                 puts("ERROR: Check backup filename in netshbattool.ini");
                 puts("Press ENTER to exit");
                 getchar();
@@ -323,7 +403,8 @@ int main () {
             }
         //Check filename for weird characters
         for(i=0;backupfile[i] != '\0';i++) {
-            if(i > 100) {
+            if(i > 60) {
+                notifymsg(1);
                 puts("ERROR: Check backup filename for length");
                 puts("Press ENTER to exit");
                 getchar();
@@ -337,6 +418,7 @@ int main () {
                 && (backupfile[i] != '!') && (backupfile[i] != ']') && (backupfile[i] != '#')
                 && (backupfile[i] != ',')) && (backupfile[i] != ':') && (backupfile[i] != ' ')
                 || (backupfile[i] == '\n')) {
+                    notifymsg(1);
                     puts("ERROR - Check backup filename in netshbattool.ini");
                     puts("Press ENTER to exit");
                     getchar();
@@ -362,16 +444,16 @@ int main () {
     puts("\n");
 
     // Backup of binding settings command and filename
-    char netshcmd[100];
-    char filename[50];
+    char netshcmd[BUF_M];
+    char filename[BUF_S];
     
     time_t rawtime;
     struct tm *timeinfo;
     time( &rawtime );
     timeinfo = localtime( &rawtime );
 
-    strftime(filename,50,"netsh_backup-%m_%d_%Y-%H_%M_%S.txt", timeinfo);
-    sprintf(netshcmd,"netsh http show sslcert >%s", filename);
+    strftime(filename,BUF_S,"netsh_backup-%m_%d_%Y-%H_%M_%S.txt", timeinfo);
+    snprintf(netshcmd, BUF_M, "netsh http show sslcert >%s", filename);
 
     // Running command to create backup of settings
     system(netshcmd);
@@ -379,8 +461,8 @@ int main () {
     printf("\"netsh http show sslcert\" backup file created: %s\n\n", filename);
 
     // Creating bat file for commands
-    char filenamew[50];
-    strftime(filenamew,50,"netsh_commands-%m_%d_%Y-%H_%M_%S.bat", timeinfo);
+    char filenamew[BUF_S];
+    strftime(filenamew,BUF_S,"netsh_commands-%m_%d_%Y-%H_%M_%S.bat", timeinfo);
 
     FILE *fpw;
     fpw = fopen(filenamew, "a");
@@ -405,6 +487,7 @@ int main () {
             if (!frombackup) {
                 printf("ERROR: Unable to open %s to read settings\nDeleting empty batch file\n", filename);
             } else {
+                notifymsg(1);
                 printf("ERROR: Unable to open %s to read settings\nDeleting empty batch file\n", backupfile);
             }
             if (remove(filenamew) == 0) {
@@ -417,13 +500,13 @@ int main () {
             exit(1);
         }
 
-        char buffer[100];
+        char buffer[BUF_M];
         char *ret;
-        char ipport[100];
-        char hostport[100];
-        char appid[100];
-        char cmd[100];
-        char backupthumb[100];
+        char ipport[BUF_M];
+        char hostport[BUF_M];
+        char appid[BUF_M];
+        char cmd[BUF_M];
+        char backupthumb[BUF_M];
         i = j = k = 0;
 
         // Finding default bindings and writing detete/add commands to bat file
@@ -433,6 +516,14 @@ int main () {
         //if (nopause == 0) {
         fputs("pause\n\n", fpw);
         //}
+        
+        if(frombackup) {
+            fputs("echo Using COMMANDS FROM BACKUP FILE mode\n\npause\n\n", fpw);
+        }
+
+        if(thumbnot40) {
+            fputs("echo WARNING: Thumbprint is not 40 characters long, might not be correct\n\npause\n\n", fpw);
+        }
 
         fputs("@echo on\n\n", fpw);
 
@@ -520,6 +611,10 @@ int main () {
                 }
         }
     }
+
+    if (frombackup) {
+            notifymsg(1);
+        }
     
     // Custom mode
 
@@ -534,8 +629,11 @@ int main () {
         fputs("@echo off\necho BAT file to update port bindings\n\n", fpw);
         
         //if (nopause == 0) {
-        fputs("pause\n\n", fpw);
+        fputs("pause\n\necho Using CUSTOM mode\n\npause\n\n", fpw);
         //}
+        if(thumbnot40) {
+            fputs("echo WARNING: Thumbprint is not 40 characters long, might not be correct\n\npause\n\n", fpw);
+        }
         
         fputs("@echo on\n\n", fpw);
         for(i=0;i <= k;i++) {
@@ -565,8 +663,13 @@ int main () {
         fclose(fpw);
 
         printf("Batch file with commands created: %s\n\n", filenamew);
+
+        notifymsg(2);
     }
-    
+
+    if (thumbnot40) {
+        notifymsg(0);
+    }    
 
     puts("Press ENTER to exit");
     getchar();
