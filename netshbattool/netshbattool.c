@@ -33,8 +33,8 @@ int makeconfig () {
         fputs("# If \"use_thumbprint_from_backup_file\" is 1, thumbprint from backup file will be used\n# for commands instead of thumbprint setting at the top.\n", fpc);
         fputs("\ncommands_from_backup_file=0\nbackup_filename=example.txt\nuse_thumbprint_from_backup_file=0\n\n\n", fpc);
         fputs("# Set \"custom\" to 1 to make .bat file with commands for all default ports on a\n", fpc);
-        fputs("# chosen IP/hostname and appid using thumbprint configured above.\n# Can set hostname to be retrieved automatically (hostname_manual setting would be ignored), or \n", fpc);
-        fputs("# set the to 0 to use manually-entered hostname.\n# If \"delete sslcert\" commands are needed, set include_delete_sslcert_commands to 1\n", fpc);
+        fputs("# chosen IP/hostname and appid using thumbprint configured above.\n# Can have hostname be retrieved automatically (hostname_manual setting would be ignored), or \n", fpc);
+        fputs("# set the \"get_hostname_automatically\" setting to 0 to use manually-entered hostname.\n# If \"delete sslcert\" commands are needed, set include_delete_sslcert_commands to 1\n", fpc);
         fputs("# Note: custom mode won't make commands for port 443 for \"hostnameport\", so far have only seen \"ipport\" bindings for IIS\n\n", fpc);
         fputs("custom=0\nget_hostname_automatically=1\nip=0.0.0.0\nhostname_manual=example.com\nappid={00112233-4455-6677-8899-AABBCCDDEEFF}\ninclude_delete_sslcert_commands=0\n\n", fpc);
         fclose(fpc);
