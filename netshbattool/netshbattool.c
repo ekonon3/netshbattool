@@ -8,6 +8,10 @@
 #define BUF_M 100
 #define BUF_S 50
 
+#define ANSI_COLOR_RED     "\033[31m"
+#define ANSI_COLOR_GREEN   "\033[32m"
+#define ANSI_COLOR_RESET   "\033[0m"
+
 // Function to make config file
 int makeconfig () {
 
@@ -80,13 +84,13 @@ void notifymsg(int msg)
 {
     switch (msg) {
         case 0:
-            puts("---WARNING: Thumbprint is not 40 characters long, might not be correct---\n");
+            printf(ANSI_COLOR_RED "---WARNING: Thumbprint is not 40 characters long, might not be correct---\n" ANSI_COLOR_RESET);
             break;
         case 1:
-            puts("---INI FILE SET TO USE \"COMMANDS FROM BACKUP FILE\" MODE---\n");
+            printf(ANSI_COLOR_GREEN "---INI FILE SET TO USE \"COMMANDS FROM BACKUP FILE\" MODE---\n" ANSI_COLOR_RESET);
             break;
         case 2:
-            puts("---INI FILE SET TO USE \"CUSTOM\" MODE---\n");
+            printf(ANSI_COLOR_GREEN "---INI FILE SET TO USE \"CUSTOM\" MODE---\n" ANSI_COLOR_RESET);
             break;
         default:
             break;
