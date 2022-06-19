@@ -54,7 +54,7 @@ char* getfqdn() {
     char expectedresult[] = "Full Computer name                   ";
     bool success = false;
     FILE *fphost;
-    fphost = popen("net config workstation | findstr \"Full\"", "r");
+    fphost = _popen("net config workstation | findstr \"Full\"", "r");
         if (fphost == NULL) {
             puts("Issue with getting hostname automatically, exiting");
             getchar();
@@ -67,7 +67,7 @@ char* getfqdn() {
                 }
             }
         }
-    pclose(fphost);
+    _pclose(fphost);
     
     if (!success) {
         puts("Issue with getting hostname automatically, exiting");
@@ -79,21 +79,66 @@ char* getfqdn() {
             
 }
 
-// Function for some notifications
-void notifymsg(int msg)
+// Enable virtual terminal processing for color
+// Function code from https://docs.microsoft.com/en-us/windows/console/console-virtual-terminal-sequences
+bool EnableVTMode()
 {
-    switch (msg) {
-        case 0:
-            printf(ANSI_COLOR_RED "---WARNING: Thumbprint is not 40 characters long, might not be correct---\n" ANSI_COLOR_RESET);
-            break;
-        case 1:
-            printf(ANSI_COLOR_GREEN "---INI FILE SET TO USE \"COMMANDS FROM BACKUP FILE\" MODE---\n" ANSI_COLOR_RESET);
-            break;
-        case 2:
-            printf(ANSI_COLOR_GREEN "---INI FILE SET TO USE \"CUSTOM\" MODE---\n" ANSI_COLOR_RESET);
-            break;
-        default:
-            break;
+    // Set output mode to handle virtual terminal sequences
+    HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+    if (hOut == INVALID_HANDLE_VALUE)
+    {
+        return false;
+    }
+
+    DWORD dwMode = 0;
+    if (!GetConsoleMode(hOut, &dwMode))
+    {
+        return false;
+    }
+
+    dwMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+    if (!SetConsoleMode(hOut, dwMode))
+    {
+        return false;
+    }
+    return true;
+}
+
+// Function for some notifications
+void notifymsg(int msg, bool vt)
+{
+    char msg0[] = "---WARNING: Thumbprint is not 40 characters long, might not be correct---\n";
+    char msg1[] = "---INI FILE SET TO USE \"COMMANDS FROM BACKUP FILE\" MODE---\n";
+    char msg2[] = "---INI FILE SET TO USE \"CUSTOM\" MODE---\n";
+
+    if (vt) {
+        switch (msg) {
+            case 0:
+                printf(ANSI_COLOR_RED "%s" ANSI_COLOR_RESET, msg0);
+                break;
+            case 1:
+                printf(ANSI_COLOR_GREEN "%s" ANSI_COLOR_RESET, msg1);
+                break;
+            case 2:
+                printf(ANSI_COLOR_GREEN "%s" ANSI_COLOR_RESET, msg2);
+                break;
+            default:
+                break;
+        }
+    } else {
+        switch (msg) {
+            case 0:
+                printf("%s", msg0);
+                break;
+            case 1:
+                printf("%s", msg1);
+                break;
+            case 2:
+                printf("%s", msg2);
+                break;
+            default:
+                break;
+        }
     }
 
 }
@@ -104,8 +149,14 @@ int main () {
 
     puts("========================================================");
     puts("Batch file creation tool for netsh http sslcert commands");
-    puts("May 2022");
+    puts("June 2022");
     puts("========================================================");
+
+    // Virtual terminal formatting check
+    bool vt = false;
+    if (EnableVTMode()) {
+        vt = true;
+    }
 
     // Ports
     const char *p[6];
@@ -291,7 +342,7 @@ int main () {
 
             for (i=0;i < strlen(ipcustomf);i++) {
                 if (!isdigit(ipcustomf[i]) && ipcustomf[i] != '.' && ipcustomf[i] != ' ') {
-                    notifymsg(2);
+                    notifymsg(2, vt);
                     puts("ERROR: Invalid character in IP address");
                     printf("Character: %c\n", ipcustomf[i]);
                     puts("Press ENTER to exit");
@@ -302,7 +353,7 @@ int main () {
             }
             
             if (i > 16) {
-                notifymsg(2);
+                notifymsg(2, vt);
                 puts("Check IP address length");
                 puts("Press ENTER to exit");
                 getchar();
@@ -339,7 +390,7 @@ int main () {
                 if (!isdigit(hostcustomf[i]) && !isalpha(hostcustomf[i])
                 && hostcustomf[i] != '.' && hostcustomf[i] != '-' &&
                 (i > 0 && hostcustomf[i] != ' ')){
-                    notifymsg(2);
+                    notifymsg(2, vt);
                     puts("ERROR: Invalid character in hostname");
                     printf("Character: %c\n", hostcustomf[i]);
                     puts("Press ENTER to exit");
@@ -372,7 +423,7 @@ int main () {
                 if (!isdigit(appidcustomf[i]) && !isalpha(appidcustomf[i])
                 && appidcustomf[i] != '-' && appidcustomf[i] != '{'
                 && appidcustomf[i] != '}' && appidcustomf[i] != ' ') {
-                    notifymsg(2);
+                    notifymsg(2, vt);
                     puts("ERROR: Invalid character in appid");
                     printf("Character: %c\n", appidcustomf[i]);
                     puts("Press ENTER to exit");
@@ -382,7 +433,7 @@ int main () {
             }
 
             if (i > 40) {
-                notifymsg(2);
+                notifymsg(2, vt);
                 puts("Check appid length");
                 puts("Press ENTER to exit");
                 getchar();
@@ -399,7 +450,7 @@ int main () {
     if (frombackup) {
         puts("commands_from_backup_file setting is set to 1");
         if(strlen(backupfile) < 2) {
-                notifymsg(1);
+                notifymsg(1, vt);
                 puts("ERROR: Check backup filename in netshbattool.ini");
                 puts("Press ENTER to exit");
                 getchar();
@@ -408,7 +459,7 @@ int main () {
         //Check filename for weird characters
         for(i=0;backupfile[i] != '\0';i++) {
             if(i > 60) {
-                notifymsg(1);
+                notifymsg(1, vt);
                 puts("ERROR: Check backup filename for length");
                 puts("Press ENTER to exit");
                 getchar();
@@ -422,7 +473,7 @@ int main () {
                 && (backupfile[i] != '!') && (backupfile[i] != ']') && (backupfile[i] != '#')
                 && (backupfile[i] != ',')) && (backupfile[i] != ':') && (backupfile[i] != ' ')
                 || (backupfile[i] == '\n')) {
-                    notifymsg(1);
+                    notifymsg(1, vt);
                     puts("ERROR - Check backup filename in netshbattool.ini");
                     puts("Press ENTER to exit");
                     getchar();
@@ -491,7 +542,7 @@ int main () {
             if (!frombackup) {
                 printf("ERROR: Unable to open %s to read settings\nDeleting empty batch file\n", filename);
             } else {
-                notifymsg(1);
+                notifymsg(1, vt);
                 printf("ERROR: Unable to open %s to read settings\nDeleting empty batch file\n", backupfile);
             }
             if (remove(filenamew) == 0) {
@@ -509,7 +560,6 @@ int main () {
         char ipport[BUF_M];
         char hostport[BUF_M];
         char appid[BUF_M];
-        char cmd[BUF_M];
         char backupthumb[BUF_M];
         i = j = k = 0;
 
@@ -617,7 +667,7 @@ int main () {
     }
 
     if (frombackup) {
-            notifymsg(1);
+            notifymsg(1, vt);
         }
     
     // Custom mode
@@ -668,11 +718,11 @@ int main () {
 
         printf("Batch file with commands created: %s\n\n", filenamew);
 
-        notifymsg(2);
+        notifymsg(2, vt);
     }
 
     if (thumbnot40) {
-        notifymsg(0);
+        notifymsg(0, vt);
     }    
 
     puts("Press ENTER to exit");
