@@ -110,6 +110,7 @@ void notifymsg(int msg, bool vt)
     char msg0[] = "---WARNING: Thumbprint is not 40 characters long, might not be correct---\n";
     char msg1[] = "---INI FILE SET TO USE \"COMMANDS FROM BACKUP FILE\" MODE---\n";
     char msg2[] = "---INI FILE SET TO USE \"CUSTOM\" MODE---\n";
+    char msg3[] = "\n---ERROR: UNEXPECTED FORMAT OF RESULTS, SEARCH ENDED PREMATURELY DUE TO ERROR---\n";
 
     if (vt) {
         switch (msg) {
@@ -121,6 +122,9 @@ void notifymsg(int msg, bool vt)
                 break;
             case 2:
                 printf(ANSI_COLOR_GREEN "%s" ANSI_COLOR_RESET, msg2);
+                break;
+            case 3:
+                printf(ANSI_COLOR_RED "%s" ANSI_COLOR_RESET, msg3);
                 break;
             default:
                 break;
@@ -135,6 +139,9 @@ void notifymsg(int msg, bool vt)
                 break;
             case 2:
                 printf("%s", msg2);
+                break;
+            case 3:
+                printf("%s", msg3);
                 break;
             default:
                 break;
@@ -195,6 +202,7 @@ int main () {
     bool flag[12] = { 0 };
 
     bool thumbnot40 = false;
+    bool resulterror = false;
 
     char endcheck[] = "echo End of commands\n\n:choice\nset /P c=Do you want to see current bindings? [Y/N]\n";
     char endcheck2[] = "if /I \"%c%\" EQU \"Y\" goto :yes\nif /I \"%c%\" EQU \"N\" goto :no\ngoto :choice\n\n";
@@ -561,6 +569,7 @@ int main () {
         char hostport[BUF_M];
         char appid[BUF_M];
         char backupthumb[BUF_M];
+        bool backupthumbfound = false;
         i = j = k = 0;
 
         // Finding default bindings and writing detete/add commands to bat file
@@ -587,6 +596,10 @@ int main () {
                     (strstr(buffer, p[2]) != NULL) || (strstr(buffer, p[3]) != NULL) ||
                     (strstr(buffer, p[4]) != NULL) || (yes443 && strstr(buffer, p[5]) != NULL)) {
                         ret = strstr(buffer, ": ");
+                        if (ret == NULL) {
+                            resulterror = true;
+                            break;
+                        }
                         ret[strlen(ret)-1] = '\0';
                         memmove(ret, ret+2, strlen(ret));
                         strcpy(ipport, ret);
@@ -599,6 +612,10 @@ int main () {
                     (strstr(buffer, p[2]) != NULL) || (strstr(buffer, p[3]) != NULL) ||
                     (strstr(buffer, p[4]) != NULL) || (yes443 && strstr(buffer, p[5]) != NULL)) {
                         ret = strstr(buffer, ": ");
+                        if (ret == NULL) {
+                            resulterror = true;
+                            break;
+                        }
                         ret[strlen(ret)-1] = '\0';
                         memmove(ret, ret+2, strlen(ret));
                         strcpy(hostport, ret);
@@ -608,13 +625,22 @@ int main () {
             }
             if (thumbfrombackup && (i == 1 || j == 1) && strstr(buffer, "Certificate Hash") != NULL) {
                 ret = strstr(buffer, ": ");
+                if (ret == NULL) {
+                    resulterror = true;
+                    break;
+                        }
                 ret[strlen(ret)-1] = '\0';
                 memmove(ret, ret+2, strlen(ret));
                 strcpy(backupthumb, ret);
                 printf("Thumbprint from backup: %s\n", backupthumb);
+                backupthumbfound = true;
             }
             if ((i == 1 || j == 1) && strstr(buffer, "Application ID") != NULL) {
                 ret = strstr(buffer, ": ");
+                if (ret == NULL) {
+                    resulterror = true;
+                    break;
+                        }
                 ret[strlen(ret)-1] = '\0';
                 memmove(ret, ret+2, strlen(ret));
                 strcpy(appid, ret);
@@ -624,7 +650,13 @@ int main () {
                     if(!thumbfrombackup) {
                         fprintf(fpw, "netsh http add sslcert ipport=%s certhash=%s appid=%s\n\n", ipport, thumbprintf, appid);
                     } else {
-                        fprintf(fpw, "netsh http add sslcert ipport=%s certhash=%s appid=%s\n\n", ipport, backupthumb, appid);
+                        if (backupthumbfound == true) {
+                            fprintf(fpw, "netsh http add sslcert ipport=%s certhash=%s appid=%s\n\n", ipport, backupthumb, appid);
+                            backupthumbfound = false;
+                        } else {
+                            resulterror = true;
+                            break;
+                        }
                     }
                     if (!nopause) {
                         fputs("pause\n\n", fpw);
@@ -636,7 +668,13 @@ int main () {
                     if (!thumbfrombackup) {
                         fprintf(fpw, "netsh http add sslcert hostnameport=%s certhash=%s appid=%s certstorename=MY\n\n", hostport, thumbprintf, appid);
                     } else {
-                        fprintf(fpw, "netsh http add sslcert hostnameport=%s certhash=%s appid=%s certstorename=MY\n\n", hostport, backupthumb, appid);
+                        if (backupthumbfound == true) {
+                            fprintf(fpw, "netsh http add sslcert hostnameport=%s certhash=%s appid=%s certstorename=MY\n\n", hostport, backupthumb, appid);
+                            backupthumbfound = false;
+                        } else {
+                            resulterror = true;
+                            break;
+                        }
                     }
                     if (!nopause) {
                         fputs("pause\n\n", fpw);
@@ -645,7 +683,7 @@ int main () {
                 }
                 i = 0;
                 j = 0;
-                }
+            }
         }
         fputs("@echo off\n\n", fpw);
         fprintf(fpw, "%s%s%s", endcheck, endcheck2, endcheck3);
@@ -653,27 +691,32 @@ int main () {
         fclose(fp);
         fclose(fpw);
 
-        printf("Bindings on default ports found: %i\n", k);
+        if (!resulterror)
+            printf("Bindings on default ports found: %i\n", k);
+
         printf("Batch file with commands created: %s\n\n", filenamew);
 
-        if (k == 0) {
-            puts("No bindings on default ports found, deleting BAT file");
+        if (k == 0 || resulterror) {
+            if (!resulterror) {
+                puts("No bindings on default ports found, deleting BAT file");
+            } else {
+                puts("Deleting batch file due to error during retrieving results");
+            }
+            
             if (remove(filenamew) == 0) {
                 printf("Deleted %s successfully\n\n", filenamew);
-                } else {
+            } else {
                 printf("ERROR: Unable to delete %s\n\n", filenamew);
-                }
+            }
         }
     }
 
-    if (frombackup) {
-            notifymsg(1, vt);
-        }
+    if (frombackup)
+        notifymsg(1, vt);
     
     // Custom mode
 
     if (custom) {
-
         if (yes443) {
             k = 5;
         } else {
@@ -721,9 +764,11 @@ int main () {
         notifymsg(2, vt);
     }
 
-    if (thumbnot40) {
+    if (thumbnot40)
         notifymsg(0, vt);
-    }    
+
+    if (resulterror)
+        notifymsg(3, vt);
 
     puts("Press ENTER to exit");
     getchar();
