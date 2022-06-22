@@ -167,12 +167,12 @@ int main () {
 
     // Ports
     const char *p[6];
-    p[0] = "5630";
-    p[1] = "5650";
-    p[2] = "3113";
-    p[3] = "5633"; 
-    p[4] = "6505";
-    p[5] = "443";
+    p[0] = ":5630";
+    p[1] = ":5650";
+    p[2] = ":3113";
+    p[3] = ":5633"; 
+    p[4] = ":6505";
+    p[5] = ":443";
 
     // Read config, set variables
     char config[BUF_M];
@@ -499,9 +499,9 @@ int main () {
         puts("no_pauses_in_bat_file setting set to 1");
     }
 
-    printf("Default ports looked for are: %s, %s, %s, %s, %s", p[0], p[1], p[2], p[3], p[4]);
+    printf("Default ports looked for are: %s, %s, %s, %s, %s", &p[0][1], &p[1][1], &p[2][1], &p[3][1], &p[4][1]);
     if (yes443) {
-        printf(", %s\ninclude_port_443 setting set to 1\n", p[5]);
+        printf(", %s\ninclude_port_443 setting set to 1\n", &p[5][1]);
     }
 
     puts("\n");
@@ -600,6 +600,12 @@ int main () {
                             resulterror = true;
                             break;
                         }
+                        if(yes443 && strstr(buffer, p[5]) != NULL && ret[strlen(ret)-5] != ':')
+                            continue;
+
+                        if (ret[strlen(ret)-6] != ':' && ret[strlen(ret)-5] != ':')
+                            continue;
+                        
                         ret[strlen(ret)-1] = '\0';
                         memmove(ret, ret+2, strlen(ret));
                         strcpy(ipport, ret);
@@ -616,6 +622,12 @@ int main () {
                             resulterror = true;
                             break;
                         }
+                        if(yes443 && strstr(buffer, p[5]) != NULL && ret[strlen(ret)-5] != ':')
+                            continue;
+
+                        if (ret[strlen(ret)-6] != ':' && ret[strlen(ret)-5] != ':')
+                            continue;
+                        
                         ret[strlen(ret)-1] = '\0';
                         memmove(ret, ret+2, strlen(ret));
                         strcpy(hostport, ret);
@@ -650,7 +662,7 @@ int main () {
                     if(!thumbfrombackup) {
                         fprintf(fpw, "netsh http add sslcert ipport=%s certhash=%s appid=%s\n\n", ipport, thumbprintf, appid);
                     } else {
-                        if (backupthumbfound == true) {
+                        if (backupthumbfound) {
                             fprintf(fpw, "netsh http add sslcert ipport=%s certhash=%s appid=%s\n\n", ipport, backupthumb, appid);
                             backupthumbfound = false;
                         } else {
@@ -668,7 +680,7 @@ int main () {
                     if (!thumbfrombackup) {
                         fprintf(fpw, "netsh http add sslcert hostnameport=%s certhash=%s appid=%s certstorename=MY\n\n", hostport, thumbprintf, appid);
                     } else {
-                        if (backupthumbfound == true) {
+                        if (backupthumbfound) {
                             fprintf(fpw, "netsh http add sslcert hostnameport=%s certhash=%s appid=%s certstorename=MY\n\n", hostport, backupthumb, appid);
                             backupthumbfound = false;
                         } else {
@@ -735,9 +747,9 @@ int main () {
         fputs("@echo on\n\n", fpw);
         for(i=0;i <= k;i++) {
             if (includedel) {
-                fprintf(fpw, "netsh http delete sslcert ipport=%s:%s\n", ipcustomf, p[i]);
+                fprintf(fpw, "netsh http delete sslcert ipport=%s%s\n", ipcustomf, p[i]);
             }
-            fprintf(fpw, "netsh http add sslcert ipport=%s:%s certhash=%s appid=%s\n\n", ipcustomf, p[i], thumbprintf, appidcustomf);
+            fprintf(fpw, "netsh http add sslcert ipport=%s%s certhash=%s appid=%s\n\n", ipcustomf, p[i], thumbprintf, appidcustomf);
 
             if (!nopause) {
                 fputs("pause\n\n", fpw);
@@ -745,9 +757,9 @@ int main () {
 
             if(!(yes443 && i == k)) {
                 if (includedel) {
-                    fprintf(fpw, "netsh http delete sslcert hostnameport=%s:%s\n", hostcustomf, p[i]);
+                    fprintf(fpw, "netsh http delete sslcert hostnameport=%s%s\n", hostcustomf, p[i]);
                 }
-                fprintf(fpw, "netsh http add sslcert hostnameport=%s:%s certhash=%s appid=%s certstorename=MY\n\n", hostcustomf, p[i], thumbprintf, appidcustomf);
+                fprintf(fpw, "netsh http add sslcert hostnameport=%s%s certhash=%s appid=%s certstorename=MY\n\n", hostcustomf, p[i], thumbprintf, appidcustomf);
 
                 if (!nopause) {
                     fputs("pause\n\n", fpw);
